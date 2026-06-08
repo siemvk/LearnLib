@@ -1,8 +1,6 @@
 # 2.0.0
 
-redid the entire codebase, you are fucked if you update, but it should be worth it.
-
-Also we now have FSRS support.
+redid the entire codebase, you are fucked if you update, but it should be worth it long term.
 
 # 1.1.1
 
