@@ -1,5 +1,8 @@
 import { Grade, gradeMaker, KaartStaat, kaartWachtrij, leerMethode, wachrijUpdater } from "./types"
 import { checkAnswer } from "./check"
+import { simpleWachtrij } from "./wachrijUpdater/simple";
+import { verySimple } from "./gradeMakers/verySimple";
+import { simpleMethode } from "./methodes/simple";
 
 export default class Learnlib {
   private methode: leerMethode;
@@ -47,3 +50,26 @@ export default class Learnlib {
     this.wachtrijUpdater.updateWachtrij(this.wachtrij, this.current, grade)
   }
 }
+
+// we moeten een goofy export dingetje doen om de leermodi enzo te exporten
+
+export { Grade, KaartStaat, leerMethode, wachrijUpdater, gradeMaker, urlSafeString } from "./types"
+export { checkAnswer } from "./check"
+
+// exporteer alle leermodi en wachtrij updaters
+export { verySimple } from "./gradeMakers/verySimple"
+export { simpleMethode } from "./methodes/simple"
+export { simpleWachtrij } from "./wachrijUpdater/simple"
+
+// export ze ook als een lijst
+export const methodes: leerMethode[] = [
+  new simpleMethode(),
+]
+
+export const wachtrijUpdaters: wachrijUpdater[] = [
+  new simpleWachtrij(),
+]
+
+export const gradeMakers: gradeMaker[] = [
+  new verySimple(),
+]
