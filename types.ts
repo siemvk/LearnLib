@@ -35,6 +35,7 @@ export interface wachrijUpdater {
     id: urlSafeString, // MOET URL SAFE ZIJN
     updateWachtrij(rij: kaartWachtrij, kaart: KaartStaat, g: Grade): kaartWachtrij
 }
+export type wachtrijUpdater = wachrijUpdater;
 
 export interface gradeMaker {
     naam: string,

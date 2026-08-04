@@ -3,22 +3,33 @@ import { checkAnswer } from "./check"
 import { simpleWachtrij } from "./wachrijUpdater/simple";
 import { verySimple } from "./gradeMakers/verySimple";
 import { simpleMethode } from "./methodes/simple";
+import { upgradeTools } from "./upgradeTools";
 
 export default class Learnlib {
   private methode: leerMethode;
   private grader: gradeMaker;
-  private wachtrij: kaartWachtrij;
-  private current: KaartStaat;
+  public wachtrij: kaartWachtrij;
+  public current: KaartStaat;
   private cStart: Date
   private wachtrijUpdater: wachrijUpdater;
 
   constructor(wachtrij: kaartWachtrij, methode: leerMethode, grader: gradeMaker, wachtrijUpdater: wachrijUpdater) {
+    if (wachtrij.length !== 0) {
+      throw new Error("Kan niet functioneren zonder wachtrij");
+
+    }
     this.wachtrij = this.shuffleArray(wachtrij)
     this.methode = methode
     this.grader = grader
     this.current = this.wachtrij[0]
     this.cStart = new Date()
     this.wachtrijUpdater = wachtrijUpdater
+    if (this.current.methodeId == undefined) {
+      this.wachtrij.map((v) => {
+        v.methodeId = this.methode.id.toString();
+        v = upgradeTools.upgradeList(v);
+      })
+    }
     if (this.current.methodeId != this.methode.id.toString()) {
       throw new Error("ERROR: Verkeerde methode");
     }
@@ -31,6 +42,15 @@ export default class Learnlib {
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
     }
     return shuffled
+  }
+
+  public reshuffle() {
+    // reshuffle de wachtrij
+    this.wachtrij = this.shuffleArray(this.wachtrij)
+    // update current
+    this.current = this.wachtrij[0]
+    // reset cStart
+    this.cStart = new Date()
   }
 
   public antwoord(uAnwtoord: string, gradeOverwrite?: Grade) {
@@ -47,13 +67,20 @@ export default class Learnlib {
     this.wachtrij[0] = this.current
 
     // update wachtrij
-    this.wachtrijUpdater.updateWachtrij(this.wachtrij, this.current, grade)
+    this.wachtrij = this.wachtrijUpdater.updateWachtrij(this.wachtrij, this.current, grade)
+
+    // update current
+    this.current = this.wachtrij[0]
+
+    // reset cStart
+    this.cStart = new Date()
   }
 }
 
 // we moeten een goofy export dingetje doen om de leermodi enzo te exporten
 
-export { Grade, KaartStaat, leerMethode, wachrijUpdater, gradeMaker, urlSafeString } from "./types"
+export { Grade, urlSafeString } from "./types"
+export type { KaartStaat, leerMethode, wachtrijUpdater, wachrijUpdater, gradeMaker, kaartWachtrij } from "./types"
 export { checkAnswer } from "./check"
 
 // exporteer alle leermodi en wachtrij updaters
@@ -73,3 +100,4 @@ export const wachtrijUpdaters: wachrijUpdater[] = [
 export const gradeMakers: gradeMaker[] = [
   new verySimple(),
 ]
+export { upgradeTools } from "./upgradeTools"
