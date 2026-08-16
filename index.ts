@@ -1,5 +1,5 @@
 import { Grade, gradeMaker, KaartStaat, kaartWachtrij, leerMethode, wachrijUpdater } from "./types"
-import { checkAnswer } from "./check"
+import { checkAnswer, CheckConfig } from "./check"
 import { simpleWachtrij } from "./wachrijUpdater/simple";
 import { verySimple } from "./gradeMakers/verySimple";
 import { simpleMethode } from "./methodes/simple";
@@ -12,23 +12,31 @@ export default class Learnlib {
   public current: KaartStaat;
   private cStart: Date
   private wachtrijUpdater: wachrijUpdater;
+  private checkConfig: CheckConfig;
 
-  constructor(wachtrij: kaartWachtrij, methode: leerMethode, grader: gradeMaker, wachtrijUpdater: wachrijUpdater) {
-    if (wachtrij.length !== 0) {
+  constructor(
+    wachtrij: kaartWachtrij,
+    methode: leerMethode,
+    grader: gradeMaker,
+    wachtrijUpdater: wachrijUpdater,
+    checkConfig: CheckConfig = {}
+  ) {
+    if (wachtrij.length === 0) {
       throw new Error("Kan niet functioneren zonder wachtrij");
-
     }
     this.wachtrij = this.shuffleArray(wachtrij)
     this.methode = methode
     this.grader = grader
+    this.wachtrijUpdater = wachtrijUpdater
+    this.checkConfig = checkConfig
     this.current = this.wachtrij[0]
     this.cStart = new Date()
-    this.wachtrijUpdater = wachtrijUpdater
     if (this.current.methodeId == undefined) {
-      this.wachtrij.map((v) => {
+      this.wachtrij = this.wachtrij.map((v) => {
         v.methodeId = this.methode.id.toString();
-        v = upgradeTools.upgradeList(v);
-      })
+        return upgradeTools.upgradeList(v);
+      });
+      this.current = this.wachtrij[0];
     }
     if (this.current.methodeId != this.methode.id.toString()) {
       throw new Error("ERROR: Verkeerde methode");
@@ -53,11 +61,12 @@ export default class Learnlib {
     this.cStart = new Date()
   }
 
-  public antwoord(uAnwtoord: string, gradeOverwrite?: Grade) {
+  public antwoord(uAnwtoord: string, gradeOverwrite?: Grade, checkConfigOverride?: CheckConfig) {
     const endTime = new Date()
     const isGoed = checkAnswer(
       this.current.antwoord,
-      uAnwtoord
+      uAnwtoord,
+      checkConfigOverride ?? this.checkConfig
     );
 
     const grade = gradeOverwrite ?? this.grader.grade(isGoed, this.cStart, endTime);
@@ -82,6 +91,7 @@ export default class Learnlib {
 export { Grade, urlSafeString } from "./types"
 export type { KaartStaat, leerMethode, wachtrijUpdater, wachrijUpdater, gradeMaker, kaartWachtrij } from "./types"
 export { checkAnswer } from "./check"
+export type { CheckConfig } from "./check"
 
 // exporteer alle leermodi en wachtrij updaters
 export { verySimple } from "./gradeMakers/verySimple"

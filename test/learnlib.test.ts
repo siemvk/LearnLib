@@ -117,4 +117,30 @@ describe("Learnlib main class", () => {
         expect(Array.isArray(wachtrijUpdaters)).toBe(true);
         expect(wachtrijUpdaters.length).toBeGreaterThan(0);
     });
+
+    it("respects CheckConfig passed to constructor", () => {
+        const k1 = createDummyKaart("1", "Éclair", "Éclair");
+        const methode = new simpleMethode();
+        const grader = new verySimple();
+        const updater = new simpleWachtrij();
+
+        const lib = new Learnlib([k1], methode, grader, updater, { fuckFransen: true });
+
+        lib.antwoord("eclair");
+        // With fuckFransen=true, "eclair" is accepted as correct, so simpleWachtrij removes the card
+        expect(lib.wachtrij.length).toBe(0);
+    });
+
+    it("supports checkConfigOverride in antwoord()", () => {
+        const k1 = createDummyKaart("1", "Antwoord", "a / b");
+        const methode = new simpleMethode();
+        const grader = new verySimple();
+        const updater = new simpleWachtrij();
+
+        const lib = new Learnlib([k1], methode, grader, updater);
+
+        // Override config on answer call
+        lib.antwoord("b", undefined, { staAlternatieveAntwoordenToe: true });
+        expect(lib.wachtrij.length).toBe(0);
+    });
 });
