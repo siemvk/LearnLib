@@ -1,6 +1,5 @@
 import { describe, it, expect } from "bun:test";
 import { urlSafeString, Grade, fase } from "../types";
-import { Grade, fase } from "../types";
 
 describe("urlSafeString", () => {
     it("accepts valid URL-safe strings", () => {
