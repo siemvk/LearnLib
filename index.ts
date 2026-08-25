@@ -1,4 +1,4 @@
-import { Grade, gradeMaker, KaartStaat, kaartWachtrij, LearnlibState, leerMethode, wachrijUpdater } from "./types"
+import { Grade, gradeMaker, kaartSnapshot, KaartStaat, kaartWachtrij, LearnlibState, leerMethode, wachtrijUpdater } from "./types"
 import { checkAnswer, CheckConfig } from "./check"
 import { simpleWachtrij } from "./wachrijUpdater/simple";
 import { verySimple } from "./gradeMakers/verySimple";
@@ -8,47 +8,62 @@ import { upgradeTools } from "./upgradeTools";
 export default class Learnlib {
   private methode: leerMethode;
   private grader: gradeMaker;
-  public wachtrij: kaartWachtrij;
-  public current: KaartStaat;
+  public wachtrij: KaartStaat[];
+  public current: KaartStaat | null = null;
   private cStart: Date;
-  private wachtrijUpdater: wachrijUpdater;
+  private wachtrijUpdater: wachtrijUpdater;
   private checkConfig: CheckConfig;
   public initialCount: number;
   private listeners: Set<(state: LearnlibState) => void> = new Set();
   private cachedSnapshot!: LearnlibState;
+  public history: kaartSnapshot[]
 
   constructor(
-    wachtrij: kaartWachtrij,
+    initialState: LearnlibState | KaartStaat[],
     methode: leerMethode,
     grader: gradeMaker,
-    wachtrijUpdater: wachrijUpdater,
+    wachtrijUpdater: wachtrijUpdater,
     checkConfig: CheckConfig = {}
   ) {
-    if (wachtrij.length === 0) {
-      throw new Error("Kan niet functioneren zonder wachtrij");
-    }
-    this.wachtrij = this.shuffleArray(wachtrij);
-    this.initialCount = this.wachtrij.length;
     this.methode = methode;
     this.grader = grader;
     this.wachtrijUpdater = wachtrijUpdater;
     this.checkConfig = checkConfig;
-    this.current = this.wachtrij[0];
     this.cStart = new Date();
-    if (this.current.methodeId == undefined) {
-      this.wachtrij = this.wachtrij.map((v) => {
-        v.methodeId = this.methode.id.toString();
-        return upgradeTools.upgradeList(v);
-      });
-      this.current = this.wachtrij[0];
+
+    if (Array.isArray(initialState)) {
+      this.history = [];
+      this.wachtrij = this.shuffleArray(initialState);
+      this.current = this.wachtrij[0] ?? null;
+      this.initialCount = this.wachtrij.length;
+    } else {
+      this.history = initialState.history ?? [];
+      this.initialCount = initialState.initialCount ?? (initialState.wachtrij?.length ?? 0);
+      if (initialState.current !== undefined && initialState.current !== null) {
+        this.wachtrij = initialState.wachtrij ?? [];
+        this.current = initialState.current;
+      } else {
+        this.wachtrij = this.shuffleArray(initialState.wachtrij ?? []);
+        this.current = this.wachtrij[0] ?? null;
+      }
     }
-    if (this.current.methodeId != this.methode.id.toString()) {
-      throw new Error("ERROR: Verkeerde methode");
+
+    if (this.current) {
+      if (this.current.methodeId == undefined) {
+        this.wachtrij = this.wachtrij.map((v) => {
+          v.methodeId = this.methode.id.toString();
+          return upgradeTools.upgradeList(v);
+        });
+        this.current = this.wachtrij[0] ?? null;
+      }
+      if (this.current && this.current.methodeId != this.methode.id.toString()) {
+        throw new Error("ERROR: Verkeerde methode, deze error is de schuld van de maker van de applicatie");
+      }
     }
     this.updateSnapshot();
   }
 
-  private shuffleArray(array: kaartWachtrij): kaartWachtrij {
+  private shuffleArray(array: KaartStaat[]): KaartStaat[] {
     const shuffled = [...array];
     for (let i = shuffled.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -67,11 +82,12 @@ export default class Learnlib {
   private updateSnapshot(): LearnlibState {
     const isKlaar = this.wachtrij.length === 0;
     this.cachedSnapshot = {
-      current: isKlaar ? null : this.current,
+      current: isKlaar ? null : (this.current ?? null),
       wachtrij: [...this.wachtrij],
       isKlaar,
       initialCount: this.initialCount,
       progress: this.initialCount > 0 ? (this.initialCount - this.wachtrij.length) / this.initialCount : 0,
+      history: [...this.history]
     };
     return this.cachedSnapshot;
   }
@@ -89,32 +105,44 @@ export default class Learnlib {
 
   public reshuffle() {
     this.wachtrij = this.shuffleArray(this.wachtrij);
-    this.current = this.wachtrij[0];
+    this.current = this.wachtrij[0] ?? null;
     this.cStart = new Date();
     this.notify();
   }
 
-  public antwoord(uAnwtoord: string, gradeOverwrite?: Grade, checkConfigOverride?: CheckConfig) {
+  public antwoord(uAntwoord: string, gradeOverwrite?: Grade, checkConfigOverride?: CheckConfig) {
+    if (!this.current) {
+      return;
+    }
     const endTime = new Date();
     const isGoed = checkAnswer(
       this.current.antwoord,
-      uAnwtoord,
+      uAntwoord,
       checkConfigOverride ?? this.checkConfig
     );
 
     const grade = gradeOverwrite ?? this.grader.grade(isGoed, this.cStart, endTime);
+    this.history.push({
+      date: endTime,
+      kaartId: this.current.id,
+      antwoord: uAntwoord,
+      goed: grade
+    });
 
-    this.current = this.methode.reviewKaart(this.current, grade, endTime);
+    this.updateSnapshot();
+    this.current = this.methode.reviewKaart(this.current, grade, endTime, { ...this.cachedSnapshot });
     this.wachtrij[0] = this.current;
-    this.wachtrij = this.wachtrijUpdater.updateWachtrij(this.wachtrij, this.current, grade);
-    this.current = this.wachtrij[0];
+    this.updateSnapshot();
+    const newState = this.wachtrijUpdater.updateWachtrij({ ...this.cachedSnapshot }, this.current, grade);
+    this.wachtrij = newState.wachtrij;
+    this.current = this.wachtrij[0] ?? null;
     this.cStart = new Date();
     this.notify();
   }
 }
 
-export { Grade, urlSafeString } from "./types"
-export type { KaartStaat, LearnlibState, leerMethode, wachtrijUpdater, wachrijUpdater, gradeMaker, kaartWachtrij } from "./types"
+export { Grade } from "./types"
+export type { KaartStaat, LearnlibState, kaartSnapshot, kaartWachtrij, leerMethode, wachtrijUpdater, wachtrijUpdater as wachrijUpdater, gradeMaker } from "./types"
 export { checkAnswer } from "./check"
 export type { CheckConfig } from "./check"
 
@@ -126,7 +154,7 @@ export const methodes: leerMethode[] = [
   new simpleMethode(),
 ]
 
-export const wachtrijUpdaters: wachrijUpdater[] = [
+export const wachtrijUpdaters: wachtrijUpdater[] = [
   new simpleWachtrij(),
 ]
 

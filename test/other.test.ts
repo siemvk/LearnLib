@@ -46,17 +46,26 @@ describe("gradeMakers, methodes, wachtrij and Learnlib", () => {
     it("simpleWachtrij updateWachtrij removes or inserts based on grade", () => {
         const updater = new simpleWachtrij();
         const kaart: any = { id: "k1" };
+        const dummyState = (wachtrij: any[]) => ({
+            current: wachtrij[0] ?? null,
+            wachtrij,
+            isKlaar: wachtrij.length === 0,
+            initialCount: wachtrij.length,
+            progress: 0,
+            history: []
+        });
+
         // non-error grade should remove kaart
-        let rij: any[] = [{ id: "k1" }, { id: "k2" }];
-        let res = updater.updateWachtrij(rij, kaart, Grade.GoedPrima);
-        expect(res.find(k => k.id === "k1")).toBe(undefined);
+        let state = dummyState([{ id: "k1" }, { id: "k2" }]);
+        let res = updater.updateWachtrij(state, kaart, Grade.GoedPrima);
+        expect(res.wachtrij.find(k => k.id === "k1")).toBe(undefined);
 
         // error grade should insert kaart at deterministic position
         const realMathRandom = Math.random;
         Math.random = () => 0.5; // deterministic
-        rij = [{ id: "k2" }];
-        res = updater.updateWachtrij(rij, kaart, Grade.Fout);
-        expect(res.some(k => k.id === "k1")).toBe(true);
+        state = dummyState([{ id: "k2" }]);
+        res = updater.updateWachtrij(state, kaart, Grade.Fout);
+        expect(res.wachtrij.some(k => k.id === "k1")).toBe(true);
         Math.random = realMathRandom;
     });
 
@@ -73,7 +82,7 @@ describe("gradeMakers, methodes, wachtrij and Learnlib", () => {
         };
 
         const methode = {
-            id: { toString: () => "simple" },
+            id: "simple",
             reviewKaart: (k: any, g: Grade, now: Date) => {
                 k.metaData.geleerd = true;
                 k.lastReviewed = now;
@@ -83,18 +92,20 @@ describe("gradeMakers, methodes, wachtrij and Learnlib", () => {
 
         let updaterCalled = false;
         const wachtrijUpdater = {
-            updateWachtrij: (rij: any[], k: any, g: Grade) => {
+            id: "simple",
+            updateWachtrij: (state: any, k: any, g: Grade) => {
                 updaterCalled = true;
-                return rij;
+                return state;
             }
         } as any;
 
-        const grader = { grade: (_goed: boolean, _s: Date, _n: Date) => Grade.GoedPrima } as any;
+        const grader = { id: "basic", grade: (_goed: boolean, _s: Date, _n: Date) => Grade.GoedPrima } as any;
 
         const lib = new Learnlib([kaart], methode, grader, wachtrijUpdater);
         // calling antwoord should update current and call updater
         lib.antwoord("a");
         expect(updaterCalled).toBe(true);
+
 
         // constructor throws when methode mismatch
         const badKaart = { ...kaart, methodeId: "other" };

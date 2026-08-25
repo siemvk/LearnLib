@@ -1,10 +1,10 @@
-import { fase, Grade, KaartStaat, kaartWachtrij, leerMethode, urlSafeString } from "../types";
+import { Grade, KaartStaat, LearnlibState, leerMethode } from "../types";
 
 export class simpleMethode implements leerMethode {
     naam: string = "Simple";
-    id: urlSafeString = new urlSafeString("simple");
+    id: string = "simple";
     description: string = "Simple leren. Gewoon zoals elk ander platfrom";
-    reviewKaart(kaart: KaartStaat, g: Grade, now: Date = new Date()): KaartStaat {
+    reviewKaart(kaart: KaartStaat, g: Grade, now: Date = new Date(), state?: LearnlibState): KaartStaat {
         // als fout
         if (g === Grade.Fout) {
             kaart.nextReview = now

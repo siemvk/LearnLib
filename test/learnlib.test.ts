@@ -165,4 +165,43 @@ describe("Learnlib main class", () => {
         lib.reshuffle();
         expect(states.length).toBe(1);
     });
+
+    it("tracks answer history in snapshot and class instance", () => {
+        const k1 = createDummyKaart("1", "Vraag 1", "Antwoord 1");
+        const lib = new Learnlib([k1], new simpleMethode(), new verySimple(), new simpleWachtrij());
+
+        expect(lib.history.length).toBe(0);
+        lib.antwoord("Antwoord 1");
+
+        expect(lib.history.length).toBe(1);
+        expect(lib.history[0].kaartId).toBe("1");
+        expect(lib.history[0].antwoord).toBe("Antwoord 1");
+        expect(lib.history[0].goed).toBe(Grade.GoedPrima);
+        expect(lib.getSnapshot().history.length).toBe(1);
+    });
+
+    it("can be initialized from an existing LearnlibState", () => {
+        const k1 = createDummyKaart("1", "Vraag 1", "Antwoord 1");
+        const k2 = createDummyKaart("2", "Vraag 2", "Antwoord 2");
+        const existingState = {
+            current: k1,
+            wachtrij: [k1, k2],
+            isKlaar: false,
+            initialCount: 2,
+            progress: 0,
+            history: [{
+                kaartId: "0",
+                date: new Date(),
+                antwoord: "previous",
+                goed: Grade.GoedPrima
+            }]
+        };
+
+        const lib = new Learnlib(existingState, new simpleMethode(), new verySimple(), new simpleWachtrij());
+        expect(lib.current?.id).toBe("1");
+        expect(lib.wachtrij.length).toBe(2);
+        expect(lib.history.length).toBe(1);
+        expect(lib.history[0].kaartId).toBe("0");
+    });
 });
+
