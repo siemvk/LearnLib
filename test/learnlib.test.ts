@@ -143,4 +143,26 @@ describe("Learnlib main class", () => {
         lib.antwoord("b", undefined, { staAlternatieveAntwoordenToe: true });
         expect(lib.wachtrij.length).toBe(0);
     });
+
+    it("notifies subscribers when antwoord or reshuffle is called", () => {
+        const k1 = createDummyKaart("1", "Vraag", "Antwoord");
+        const lib = new Learnlib([k1], new simpleMethode(), new verySimple(), new simpleWachtrij());
+
+        const states: any[] = [];
+        const initialState = lib.getSnapshot();
+        expect(initialState.current?.id).toBe("1");
+        expect(initialState.isKlaar).toBe(false);
+
+        const unsubscribe = lib.subscribe((state) => {
+            states.push(state);
+        });
+
+        lib.antwoord("Antwoord");
+        expect(states.length).toBe(1);
+        expect(states[0].isKlaar).toBe(true);
+
+        unsubscribe();
+        lib.reshuffle();
+        expect(states.length).toBe(1);
+    });
 });

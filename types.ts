@@ -60,3 +60,11 @@ export class urlSafeString {
         return this.valueREAL
     }
 }
+
+export interface LearnlibState {
+    current: KaartStaat | null;
+    wachtrij: KaartStaat[];
+    isKlaar: boolean;
+    initialCount: number;
+    progress: number;
+}
